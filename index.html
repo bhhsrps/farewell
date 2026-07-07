@@ -97,6 +97,7 @@
 
     <div id="toast-container" class="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none"></div>
 
+    <!-- View Router / Fullscreen Manager -->
     <div id="app-container" class="w-full h-screen flex flex-col overflow-hidden">
         
         <header id="dashboard-header" class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4 z-10 hidden">
@@ -177,13 +178,15 @@
 
     </div>
 
+    <!-- ================== TEMPLATES ================== -->
+
     <template id="tmpl-mobile">
         <div class="p-4 space-y-4 text-slate-200">
             <div class="text-center border-b border-slate-800 pb-3">
                 <div class="w-16 h-16 mx-auto bg-white rounded-full p-1 border border-slate-700 shadow-md mb-2 flex items-center justify-center overflow-hidden">
                     <img src="https://www.chsc.hk/psp2025/pic/logo_431.jpg" alt="校徽" class="w-full h-full object-contain">
                 </div>
-                <h4 class="font-bold text-slate-100 text-base mt-1">「弦誦竹園南」寄意卡</h4>
+                <h4 class="font-bold text-slate-100 text-base mt-1">「弦誦竹園南」心意卡</h4>
                 <p class="text-xs text-slate-400">寫下您的祝福、上傳舊照共建時光牆</p>
             </div>
             
@@ -339,10 +342,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3 bg-slate-950/80 border border-slate-800 p-3 rounded-xl backdrop-blur-md">
-                    <button onclick="window.playNostalgicBell()" class="px-3 py-2 rounded bg-orange-600 hover:bg-orange-500 font-bold text-xs text-slate-950 flex items-center gap-1 transition">
-                        <i class="fa-solid fa-bell"></i> 播放下課鐘聲
-                    </button>
-                    <div class="text-right border-l border-slate-700 pl-3">
+                    <div class="text-right px-2">
                         <span id="stage-live-time" class="text-lg md:text-xl font-mono font-bold text-slate-200 block tracking-widest">--:--:--</span>
                         <span class="text-[10px] text-teal-400 block font-semibold"><i class="fa-solid fa-circle animate-pulse"></i> 雲端同步中</span>
                     </div>
@@ -423,8 +423,8 @@
         </div>
     </div>
 
+    <!-- MAIN LOGIC -->
     <script>
-        // 設定專屬的 Firebase Config，供網頁接通雲端資料庫
         window.__firebase_config = JSON.stringify({
             apiKey: "AIzaSyCvetY5nW1oRq6cANgy6YJxOIjZvyQUPIU",
             authDomain: "bhhsrps.firebaseapp.com",
@@ -441,21 +441,18 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, updateDoc, deleteDoc, onSnapshot, collection, addDoc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Constants and Configurations
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'bhhsrps-farewell';
-        const apiKey = ""; // Gemini API key provided by environment
+        const apiKey = ""; 
         let db = null;
         let auth = null;
         let currentUser = null;
         let unsubscribeMessages = null;
-        let isFirebaseInitialized = false; // 用於避免重複初始化與資料庫快取被重置
+        let isFirebaseInitialized = false; 
 
-        // Stage Loop variables
         let stageIntervalId = null;
         let clockIntervalId = null;
         let canvasAnimFrame = null;
         
-        // Global App State
         window.appState = {
             currentView: 'dashboard', 
             activeControlTab: 'pending', 
@@ -464,12 +461,11 @@
             messages: [],
             selectedPhotoBase64: null,
             polaroidIndex: 0,
-            currentPolaroidId: null, // 記錄目前大留言 ID
+            currentPolaroidId: null, 
             targetQRUrl: window.location.origin + window.location.pathname + '#mobile',
             seenDanmakuIds: new Set()
         };
 
-        // Utility: Toast Notification
         window.showToast = (message, type = 'info') => {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -484,12 +480,9 @@
             }, 3000);
         };
 
-        // Setup Application UI Structure
         function initApp() {
-            // Dynamically ensure the target QR URL is computed properly with the #mobile hash
             window.appState.targetQRUrl = window.location.href.split('#')[0] + '#mobile';
 
-            // Determine view from hash (for independent windows)
             if (window.location.hash === '#mobile') {
                 window.appState.currentView = 'mobile';
             } else if (window.location.hash === '#stage') {
@@ -498,7 +491,6 @@
                 window.appState.currentView = 'dashboard';
             }
             
-            // Set URL display for dashboard config (Safely check if element exists)
             const urlDisplay = document.getElementById('current-url-display');
             if (urlDisplay) {
                 urlDisplay.innerText = window.appState.targetQRUrl;
@@ -509,9 +501,7 @@
             setupFirebase();
         }
 
-        // Firebase Initialization
         async function setupFirebase() {
-            // 防止 Hash 改變時重複初始化 Firebase 與覆寫本地陣列
             if (isFirebaseInitialized) return;
             isFirebaseInitialized = true;
 
@@ -522,7 +512,6 @@
                     db = getFirestore(app);
                     auth = getAuth(app);
 
-                    // Auth flow
                     const initAuth = async () => {
                         try {
                             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -561,7 +550,6 @@
             }
         }
 
-        // 本地離線備用降級處理
         function fallbackToLocalMode() {
             db = null;
             auth = null;
@@ -570,7 +558,6 @@
             renderControlLists();
         }
 
-        // 本地瀏覽器緩存同步函數
         window.saveLocalMessages = () => {
             localStorage.setItem('bhhsrps_local_messages', JSON.stringify(window.appState.messages));
         };
@@ -598,7 +585,6 @@
             window.saveLocalMessages();
         }
 
-        // Realtime Sync from Firestore
         function startRealtimeSync() {
             if (!currentUser || !db) return;
             
@@ -612,13 +598,10 @@
                     msgs.push({ id: doc.id, ...doc.data() });
                 });
                 
-                // Sort locally by timestamp descending
                 msgs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
                 window.appState.messages = msgs;
                 
                 renderControlLists();
-                
-                // Check for new approved messages to trigger Danmaku on stage
                 triggerDanmakuForNewMessages(msgs);
                 
             }, (error) => {
@@ -627,7 +610,6 @@
             });
         }
 
-        // View Management
         window.switchView = (viewName) => {
             if (viewName === 'dashboard') {
                 window.location.hash = '';
@@ -646,24 +628,20 @@
             const vMobile = document.getElementById('view-mobile');
             const header = document.getElementById('dashboard-header');
             
-            // Hide all
             vDashboard.classList.add('hidden');
             vStage.classList.add('hidden');
             vMobile.classList.add('hidden');
 
-            // Cleanup Stage timers if leaving stage view
             stopStage();
 
             const viewName = window.appState.currentView;
 
-            // Header visibility logic: only show in dashboard
             if (viewName === 'dashboard') {
                 if (header) header.classList.remove('hidden');
             } else {
                 if (header) header.classList.add('hidden');
             }
 
-            // Toggle active button classes
             ['dashboard', 'stage', 'mobile'].forEach(v => {
                 const btn = document.getElementById(`btn-view-${v}`);
                 if (btn) {
@@ -679,11 +657,9 @@
 
             if (viewName === 'dashboard') {
                 vDashboard.classList.remove('hidden');
-                // Mount templates to embedded targets
                 mountTemplate('tmpl-mobile', 'mobile-embed-target');
                 mountTemplate('tmpl-control', 'control-embed-target');
                 mountTemplate('tmpl-stage', 'stage-embed-target');
-                // Setup bindings
                 renderControlLists();
                 startStage('stage-embed-target');
             } else if (viewName === 'stage') {
@@ -701,34 +677,69 @@
             const target = document.getElementById(targetId);
             if (!tmpl || !target) return;
             
-            target.innerHTML = ''; // Clear current
+            target.innerHTML = ''; 
             const clone = tmpl.content.cloneNode(true);
             target.appendChild(clone);
         }
 
         // ================== MOBILE SENDER LOGIC ==================
 
+        // 圖片前端自動壓縮（Canvas Downscale）處理函數，確保體積維持在 50KB-100KB 以內，避免超出 Firestore 1MB 的限制
         window.previewUserPhoto = (event) => {
             const file = event.target.files[0];
             if (!file) return;
             
-            // Basic size check (5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                window.showToast("相片不能超過 5MB，請重新選擇", "error");
-                event.target.value = "";
-                return;
-            }
+            window.showToast("正在處理解析相片中...", "info");
 
             const reader = new FileReader();
             reader.onload = (e) => {
-                window.appState.selectedPhotoBase64 = e.target.result;
-                showPhotoPreview(event.target, e.target.result);
+                const img = new Image();
+                img.onload = () => {
+                    // 建立一個 HTML5 Canvas 畫布來繪製壓縮圖片
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 設定最大寬度，高度按比例自動縮放
+                    const maxWidth = 800;
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // 繪製圖片到畫布
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 將 Canvas 轉換為較小體積的 JPEG Base64 (畫質品質設定為 0.6)
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                    
+                    window.appState.selectedPhotoBase64 = compressedStringSizeCheck(compressedBase64) ? compressedBase64 : null;
+                    
+                    if (window.appState.selectedPhotoBase64) {
+                        showPhotoPreview(event.target, compressedBase64);
+                        window.showToast("相片壓縮完成，可正常投放！", "success");
+                    } else {
+                        window.showToast("相片檔案過大，請選擇其他相片", "error");
+                        event.target.value = "";
+                    }
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         };
 
+        // 輔助檢測壓縮後字串長度，確保絕對不會超過 Firestore 上限
+        function compressedStringSizeCheck(base64Str) {
+            const sizeInBytes = base64Str.length * 0.75;
+            return sizeInBytes < 850000; // 嚴格控制在 850KB 以下
+        }
+
         window.usePresetPhoto = (el, url) => {
-            // Fetch the image and convert to Base64 to simulate upload
             fetch(url)
                 .then(res => res.blob())
                 .then(blob => {
@@ -764,7 +775,6 @@
         };
 
         window.insertSticker = (btn, text) => {
-            // Find parent form relative to button to avoid clone/ID conflicts
             const container = btn.closest('form') || btn.closest('.p-4');
             const textarea = container ? container.querySelector('textarea') : null;
             if(!textarea) return;
@@ -772,20 +782,16 @@
             const isActive = btn.classList.contains('bg-orange-600');
 
             if (isActive) {
-                // Toggle off: revert colors
                 btn.classList.remove('bg-orange-600', 'text-slate-950', 'border-orange-500');
                 btn.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
                 
-                // Cleanly remove the specific sticker text
                 let currentVal = textarea.value;
                 currentVal = currentVal.replace(text, '').trim();
                 textarea.value = currentVal.replace(/\s+/g, ' ');
             } else {
-                // Toggle on: make button highlight / stay illuminated
                 btn.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-700');
                 btn.classList.add('bg-orange-600', 'text-slate-950', 'border-orange-500');
                 
-                // Append sticker text and strictly enforce a 100 character maximum limit
                 let nextVal = textarea.value ? textarea.value + ' ' + text : text;
                 if (nextVal.length > 100) {
                     nextVal = nextVal.substring(0, 100);
@@ -794,22 +800,6 @@
                 textarea.value = nextVal;
             }
             textarea.focus();
-        };
-
-        window.fastFillTemplate = (btn) => {
-            const container = btn.closest('.p-4');
-            if(!container) return;
-            
-            const nameInput = container.querySelector('#mob-name');
-            const identityInput = container.querySelector('#mob-identity');
-            const messageInput = container.querySelector('#mob-message');
-            
-            if(nameInput) nameInput.value = "陳天虹 (示範)";
-            if(identityInput) identityInput.value = "校友";
-            if(messageInput) {
-                messageInput.value = "竹園南邨的校園盛載了我最無憂的童年，感謝天虹的老師們！祝學校未來發展一帆風順。";
-                messageInput.focus();
-            }
         };
 
         window.handleFormSubmit = async (event) => {
@@ -824,7 +814,6 @@
 
             if (!name || !message) return;
 
-            // Extra security check: enforce 100 character limit on submit
             if (message.length > 100) {
                 message = message.substring(0, 100);
                 window.showToast("字數超出 100 字上限，系統已為您自動截斷", "info");
@@ -838,7 +827,7 @@
                 identity,
                 message,
                 photo: photo || '',
-                approved: false, // Requires admin approval
+                approved: false, 
                 timestamp: Date.now()
             };
 
@@ -850,13 +839,12 @@
                     resetMobileForm();
                 } catch (e) {
                     console.error("Add doc error:", e);
-                    window.showToast("發送失敗，請重試", "error");
+                    window.showToast("發送失敗，相片解析度或體積仍過大，請更換相片重新發送", "error");
                 }
             } else {
-                // Local simulation
                 payload.id = 'local-' + Date.now();
                 window.appState.messages.unshift(payload);
-                window.saveLocalMessages(); // 新增：本地留言數據持久化保存
+                window.saveLocalMessages(); 
                 renderControlLists();
                 window.showToast("本地模擬發送成功 (需審核)", "success");
                 resetMobileForm();
@@ -867,7 +855,6 @@
         };
 
         function resetMobileForm() {
-            // Clean up and reset both simulator and fullscreen forms
             document.querySelectorAll('#submission-form').forEach(form => {
                 form.reset();
                 form.querySelectorAll('.sticker-btn').forEach(btn => {
@@ -875,7 +862,6 @@
                     btn.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
                 });
                 
-                // Clear previews relative to this specific form
                 const input = form.querySelector('#mob-file-input');
                 if(input) input.value = '';
                 const box = form.querySelector('#mob-photo-preview-box');
@@ -922,12 +908,10 @@
             document.getElementById('cnt-pending').innerText = pending.length;
             document.getElementById('cnt-approved').innerText = approved.length;
 
-            // Render Pending
             pendingList.innerHTML = pending.length === 0 ? 
                 '<div class="text-center py-4 text-xs text-slate-500">目前呈現待審核的留言</div>' : 
                 pending.map(m => createAdminMessageCardHTML(m, false)).join('');
 
-            // Render Approved
             approvedList.innerHTML = approved.length === 0 ? 
                 '<div class="text-center py-4 text-xs text-slate-500">目前沒有已發布的留言</div>' : 
                 approved.map(m => createAdminMessageCardHTML(m, true)).join('');
@@ -975,7 +959,7 @@
             } else {
                 const msg = window.appState.messages.find(m => m.id === id);
                 if (msg) msg.approved = true;
-                window.saveLocalMessages(); // 本地緩存同步保存
+                window.saveLocalMessages(); 
                 renderControlLists();
             }
         };
@@ -990,7 +974,7 @@
             } else {
                 const msg = window.appState.messages.find(m => m.id === id);
                 if (msg) msg.approved = false;
-                window.saveLocalMessages(); // 本地緩存同步保存
+                window.saveLocalMessages(); 
                 renderControlLists();
             }
         };
@@ -1004,7 +988,7 @@
                 }
             } else {
                 window.appState.messages = window.appState.messages.filter(m => m.id !== id);
-                window.saveLocalMessages(); // 本地緩存同步保存
+                window.saveLocalMessages(); 
                 renderControlLists();
             }
         };
@@ -1015,14 +999,13 @@
             
             if (db && currentUser) {
                 window.showToast("批次批准中...", "info");
-                // Simplified batch process (no transaction needed for this demo)
                 for (const msg of pending) {
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', msg.id), { approved: true });
                 }
                 window.showToast("已全部發布大螢幕", "success");
             } else {
                 pending.forEach(m => m.approved = true);
-                window.saveLocalMessages(); // 本地緩存同步保存
+                window.saveLocalMessages(); 
                 renderControlLists();
                 window.showToast("本地模擬：已全部批准", "success");
             }
@@ -1048,7 +1031,7 @@
                     window.showToast("資料已全數清空", "success");
                 } else {
                     window.appState.messages = [];
-                    window.saveLocalMessages(); // 本地緩存同步清除並保存
+                    window.saveLocalMessages(); 
                     renderControlLists();
                     window.showToast("本地資料已清空", "success");
                 }
@@ -1062,7 +1045,6 @@
             const container = document.getElementById(containerId);
             if(!container) return;
 
-            // Generate QR Code targeting the specific full screen mobile URL structure
             const qrImg = container.querySelector('#stage-qrcode-img');
             const urlIndicator = container.querySelector('#stage-url-indicator');
             if (qrImg) {
@@ -1071,23 +1053,19 @@
             }
             if (urlIndicator) urlIndicator.innerText = window.appState.targetQRUrl;
 
-            // Setup Clock
             const clockEl = container.querySelector('#stage-live-time');
             if (clockIntervalId) clearInterval(clockIntervalId);
             clockIntervalId = setInterval(() => {
                 if(clockEl) clockEl.innerText = new Date().toLocaleTimeString('en-US', { hour12: false });
             }, 1000);
 
-            // Setup Canvas Background (Starfield)
             initStageCanvas(container.querySelector('#stage-bg-canvas'));
 
-            // Start Polaroid Cycle
             if (stageIntervalId) clearInterval(stageIntervalId);
             stageIntervalId = setInterval(() => {
                 cyclePolaroidCard(container);
-            }, 4000); // cycle every 4 seconds
+            }, 4000); 
 
-            // Initialize display state (poem vs memories)
             updateStagePoemOverlay(container);
         }
 
@@ -1153,7 +1131,6 @@
 
             if (approvedMsgs.length === 0) {
                 if (placeholder) placeholder.classList.remove('hidden');
-                // Remove any leftover polaroid cards
                 const oldCards = cardContainer.querySelectorAll('.polaroid-card');
                 oldCards.forEach(c => c.remove());
                 if (ticker) {
@@ -1162,30 +1139,24 @@
                 return;
             }
 
-            // Hide placeholder if we have messages
             if (placeholder) placeholder.classList.add('hidden');
 
-            // Advance index
             window.appState.polaroidIndex = (window.appState.polaroidIndex + 1) % approvedMsgs.length;
             const msg = approvedMsgs[window.appState.polaroidIndex];
-            window.appState.currentPolaroidId = msg.id; // 儲存目前大留言 ID 以供過濾使用
+            window.appState.currentPolaroidId = msg.id; 
 
-            // Update ticker to show latest message snippet
             if (ticker) {
                 ticker.innerText = `${msg.name} (${msg.identity})：${msg.message}`;
             }
 
-            // Remove old cards (keep max 1 to avoid clutter)
             const oldCards = cardContainer.querySelectorAll('.polaroid-card');
             oldCards.forEach(c => {
                 c.classList.add('polaroid-exit');
                 setTimeout(() => c.remove(), 500);
             });
 
-            // Check if it is the embedded container
             const isEmbedded = container.id === 'stage-embed-target';
 
-            // Random rotation for natural look
             const rot = (Math.random() * 10 - 5) + 'deg';
             const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.name)}&background=0D8B41&color=fff&size=150`;
             const imageSrc = msg.photo || defaultAvatar;
@@ -1193,7 +1164,6 @@
             const card = document.createElement('div');
             
             if (isEmbedded) {
-                // Smaller version for embedded simulator (Updated to line-clamp-5)
                 card.className = 'polaroid-card absolute bg-white p-2 pb-5 rounded shadow-xl flex flex-col w-[150px] md:w-[170px] border border-slate-200 z-10';
                 card.style.setProperty('--rot', rot);
                 
@@ -1210,7 +1180,6 @@
                     </div>
                 `;
             } else {
-                // Original full-screen stage size (Updated to line-clamp-6 to prevent cut-off of ~100 words messages)
                 card.className = 'polaroid-card absolute bg-white p-3 md:p-4 pb-8 md:pb-12 rounded shadow-2xl flex flex-col max-w-[280px] md:max-w-[360px] border border-slate-200 z-10';
                 card.style.setProperty('--rot', rot);
                 
@@ -1229,32 +1198,26 @@
             }
             cardContainer.appendChild(card);
 
-            // 常態背景伴隨舊彈幕觸發：每當大相片刷新，隨機飛出 2 條與當前展示留言不同的舊留言彈幕
             triggerCompanionDanmakus(msg.id);
         }
 
-        // 常態背景彈幕生成函數
         function triggerCompanionDanmakus(currentId) {
             const approved = window.appState.messages.filter(m => m.approved);
             
-            // 收集目前正在畫面上飛行的所有彈幕 ID
             let activeIds = new Set();
             document.querySelectorAll('.danmaku-item').forEach(el => {
                 if (el.dataset.id) activeIds.add(el.dataset.id);
             });
 
-            // 排除掉目前正在中間展示的大相片留言，以及「正在飛行中」的留言
             const candidates = approved.filter(m => m.id !== currentId && !activeIds.has(m.id));
             
             if (candidates.length === 0) return;
 
-            // 隨機抽選 2 條
             const numToPick = Math.min(candidates.length, 2);
             const shuffled = candidates.sort(() => 0.5 - Math.random());
             const picked = shuffled.slice(0, numToPick);
 
             picked.forEach(m => {
-                // 賦予些微隨機延遲使視覺不擠壓
                 setTimeout(() => {
                     launchDanmaku(m);
                 }, Math.random() * 2000);
@@ -1262,16 +1225,13 @@
         }
 
         function triggerDanmakuForNewMessages(messages) {
-            // Find messages that are approved but haven't been seen in danmaku yet
             const approved = messages.filter(m => m.approved);
             
-            // If it's initial load, just mark all as seen
             if (window.appState.seenDanmakuIds.size === 0 && approved.length > 0) {
                 approved.forEach(m => window.appState.seenDanmakuIds.add(m.id));
                 return; 
             }
 
-            // 僅播放當前被新核准的那一條留言（新舊留言機制完全分離，此處不再額外抓取舊彈幕）
             approved.forEach(m => {
                 if (!window.appState.seenDanmakuIds.has(m.id)) {
                     window.appState.seenDanmakuIds.add(m.id);
@@ -1281,7 +1241,6 @@
         }
 
         function launchDanmaku(msg) {
-            // Target active container (either in dashboard or full stage)
             let danmakuContainers = [];
             if(window.appState.currentView === 'dashboard') {
                 const embed = document.getElementById('stage-embed-target');
@@ -1296,8 +1255,7 @@
                 
                 const el = document.createElement('div');
                 el.className = 'danmaku-item text-lg md:text-2xl';
-                el.dataset.id = msg.id; // 記錄彈幕 ID 供防撞判定使用
-                // Random color out of a preset nostalgic set
+                el.dataset.id = msg.id; 
                 const colors = ['text-orange-300', 'text-teal-300', 'text-amber-200', 'text-rose-300', 'text-blue-300'];
                 const color = colors[Math.floor(Math.random() * colors.length)];
                 
@@ -1307,31 +1265,17 @@
                                     ${msg.message}
                                 </span>`;
                 
-                // Random Y position within container (0 to 80%)
                 const topPct = Math.random() * 80;
                 el.style.top = `${topPct}%`;
                 
-                // Random duration based on length (longer text = slower) 8s to 15s
                 const duration = Math.max(8, msg.message.length * 0.4) + (Math.random() * 3);
                 el.style.animationDuration = `${duration}s`;
 
                 container.appendChild(el);
                 
-                // Clean up
                 el.addEventListener('animationend', () => el.remove());
             });
         }
-
-        window.playNostalgicBell = () => {
-            // Using a generic school school bell sound URL
-            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/school_bell.ogg');
-            audio.volume = 0.5;
-            audio.play().catch(e => {
-                console.log("Audio play blocked by browser:", e);
-                window.showToast("瀏覽器阻擋了音效播放，請先在頁面任意處點擊互動", "error");
-            });
-            window.showToast("🔊 播放下課鐘聲...", "info");
-        };
 
         // ================== GEMINI AI POEM LOGIC ==================
 
@@ -1357,7 +1301,6 @@
 來賓留言內容：
 ${contentBlock}`;
 
-            // Implementation of API Call with retry logic (Exponential Backoff)
             const maxRetries = 5;
             const baseDelay = 1000;
             
@@ -1381,17 +1324,14 @@ ${contentBlock}`;
                         document.getElementById('gemini-poem-text').innerText = text;
                         document.getElementById('gemini-poem-output-box').classList.remove('hidden');
                         window.showToast("大會專屬詩歌創作完成！", "success");
-                        
-                        // Auto project if stage is active in dual mode
                         updateStagePoemOverlay();
-                        break; // Success, exit retry loop
+                        break; 
                     } else {
                         throw new Error("No text in response");
                     }
                 } catch (error) {
                     if (i === maxRetries - 1) {
                         console.error("Gemini API Error after retries:", error);
-                        // Fallback dummy text if API key is invalid/missing in this Canvas env
                         window.appState.generatedPoem = "竹園青翠歲月長，\n紅磚映照舊時光。\n同窗嬉戲鐘聲伴，\n恩師教誨入心房。\n\n風雨四十情未減，\n走廊依稀笑語還。\n一磚一瓦皆故事，\n回首依依淚闌珊。\n\n弦歌不輟新天虹，\n初心如一展雄風。\n珍重再見非訣別，\n明日重逢暖意融。";
                         document.getElementById('gemini-poem-text').innerText = window.appState.generatedPoem;
                         document.getElementById('gemini-poem-output-box').classList.remove('hidden');
@@ -1422,7 +1362,6 @@ ${contentBlock}`;
         };
 
         function updateStagePoemOverlay(targetContainer = null) {
-            // Find containers to update (embed or fullscreen)
             const containers = targetContainer ? [targetContainer] : [];
             if (!targetContainer) {
                 if(window.appState.currentView === 'dashboard') {
@@ -1453,7 +1392,6 @@ ${contentBlock}`;
             });
         }
 
-        // Initialize App on DOM Content Loaded & listen to hash changes
         document.addEventListener('DOMContentLoaded', initApp);
         window.addEventListener('hashchange', initApp);
         
