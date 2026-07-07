@@ -68,28 +68,97 @@
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* 針對三合一工作台內嵌模擬器進行比例微調，防止大二維碼與文字溢出 */
+        /* 針對「三合一工作台」內嵌模擬器進行極精細比例縮放，徹底避免任何重疊或溢出 */
         #stage-embed-target #stage-left-panel {
-            padding: 1rem !important;
-            gap: 0.75rem !important;
+            padding: 0.5rem !important;
+            gap: 0.25rem !important;
+            border-radius: 0.75rem !important;
         }
         #stage-embed-target #stage-left-panel > span {
-            font-size: 0.95rem !important; /* text-sm/base 之間 */
+            font-size: 0.75rem !important; /* 縮小「📲 掃碼發送留言/相片」 */
+            margin-bottom: 0.125rem !important;
         }
         #stage-embed-target #stage-qrcode-container {
-            width: 10rem !important; /* 縮小至 160px (w-40) */
-            height: 10rem !important;
-            padding: 0.5rem !important;
+            width: 6rem !important; /* 縮小二維碼至 96px */
+            height: 6rem !important;
+            padding: 0.25rem !important;
+            margin: 0 auto !important;
+            border-radius: 0.5rem !important;
+        }
+        #stage-embed-target #stage-qrcode-img {
+            width: 100% !important;
+            height: 100% !important;
         }
         #stage-embed-target #stage-url-indicator {
-            font-size: 9px !important;
+            display: none !important; /* 模擬器內隱藏超長本機/GitHub網址，避免擠壓空間 */
         }
-        /* 縮小模擬器頂部 Header 字型，避免重疊 */
+        #stage-embed-target #stage-left-panel p {
+            font-size: 8px !important;
+            line-height: 1.1 !important;
+            margin-top: 0.125rem !important;
+        }
+        /* 縮小模擬器頂部 Header 與校徽，避免文字擠壓 */
         #stage-embed-target h2 {
-            font-size: 1.5rem !important; /* text-2xl */
+            font-size: 1rem !important; /* text-base */
+            line-height: 1.2 !important;
         }
         #stage-embed-target p {
-            font-size: 0.75rem !important; /* text-xs */
+            font-size: 0.65rem !important; /* text-[10px] */
+            line-height: 1.2 !important;
+        }
+        #stage-embed-target .md\:w-16 {
+            width: 2.25rem !important;
+            height: 2.25rem !important;
+            padding: 0.125rem !important;
+        }
+        /* 縮小時間與雲端同步標籤 */
+        #stage-embed-target #stage-live-time {
+            font-size: 0.875rem !important;
+            line-height: 1 !important;
+        }
+        #stage-embed-target .text-\[10px\] {
+            font-size: 8px !important;
+        }
+        #stage-embed-target .backdrop-blur-md {
+            padding: 0.35rem !important;
+            border-radius: 0.5rem !important;
+        }
+        /* 微調模擬器下方的跑馬燈 */
+        #stage-embed-target .bg-slate-950\/90 {
+            padding: 0.35rem 0.75rem !important;
+            border-radius: 0.5rem !important;
+        }
+        #stage-embed-target .bg-slate-950\/90 span {
+            font-size: 0.65rem !important;
+            padding: 0.125rem 0.25rem !important;
+        }
+        #stage-embed-target #stage-ticker-text {
+            font-size: 0.75rem !important;
+            height: auto !important;
+        }
+        /* 縮小相片牆中的相機圖示 placeholder */
+        #stage-embed-target #stage-placeholder .text-5xl {
+            font-size: 1.75rem !important;
+        }
+        #stage-embed-target #stage-placeholder h3 {
+            font-size: 0.875rem !important;
+            margin-top: 0.25rem !important;
+        }
+        #stage-embed-target #stage-placeholder p {
+            font-size: 0.65rem !important;
+            margin-top: 0.125rem !important;
+        }
+        /* 縮小 AI 詩歌大螢幕投影在模擬器內的大小 */
+        #stage-embed-target #stage-display-poem {
+            padding: 0.75rem !important;
+        }
+        #stage-embed-target #stage-display-poem span {
+            font-size: 0.75rem !important;
+        }
+        #stage-embed-target #stage-poem-content {
+            font-size: 0.85rem !important;
+            line-height: 1.3 !important;
+            margin: 0.25rem 0 !important;
         }
     </style>
 </head>
@@ -322,6 +391,7 @@
         </div>
     </template>
 
+    <!-- Template for Stage Screen (Adaptive QR panel and container sizing for tablets & projectors) -->
     <template id="tmpl-stage">
         <div class="w-full h-full relative overflow-hidden flex flex-col justify-between p-6 select-none bg-radial-dots">
             
@@ -349,20 +419,22 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-12 gap-6 flex-grow items-center z-30 my-6 relative h-3/5">
+            <div class="grid grid-cols-12 gap-4 lg:gap-6 flex-grow items-center z-30 my-6 relative h-3/5">
                 
-                <div id="stage-left-panel" class="col-span-12 md:col-span-3 bg-slate-950/80 border border-slate-800 p-6 rounded-2xl flex flex-col justify-center items-center text-center gap-5 backdrop-blur-md h-full shadow-2xl">
-                    <span class="text-lg font-bold text-orange-400">📲 掃碼發送留言/相片</span>
-                    <div id="stage-qrcode-container" class="p-4 bg-white rounded-2xl shadow-xl inline-block w-56 h-56 md:w-64 md:h-64 transition-all duration-300 transform hover:scale-105">
+                <!-- Left panel: Self-adjusting responsive QR width to fit tablet cleanly -->
+                <div id="stage-left-panel" class="col-span-12 md:col-span-4 lg:col-span-3 bg-slate-950/80 border border-slate-800 p-4 md:p-6 rounded-2xl flex flex-col justify-center items-center text-center gap-3 md:gap-5 backdrop-blur-md h-full shadow-2xl">
+                    <span class="text-sm md:text-lg font-bold text-orange-400">📲 掃碼發送留言/相片</span>
+                    <div id="stage-qrcode-container" class="p-3 bg-white rounded-2xl shadow-xl inline-block w-36 h-36 sm:w-44 sm:h-44 md:w-44 md:h-44 lg:w-52 lg:h-52 xl:w-64 xl:h-64 transition-all duration-300 transform hover:scale-105">
                         <img id="stage-qrcode-img" src="" class="w-full h-full object-contain" alt="QR Code">
                     </div>
                     <div class="space-y-1">
-                        <p class="text-sm text-slate-300 font-medium">手機相機掃描，即時發送留言</p>
-                        <p class="text-[10px] text-slate-500 break-all max-w-[200px]" id="stage-url-indicator">載入網址中...</p>
+                        <p class="text-xs md:text-sm text-slate-300 font-medium">手機相機掃描，即時發送留言</p>
+                        <p class="text-[9px] text-slate-500 break-all max-w-[200px]" id="stage-url-indicator">載入網址中...</p>
                     </div>
                 </div>
 
-                <div class="col-span-12 md:col-span-9 h-full relative flex items-center justify-center">
+                <!-- Middle/Right panel -->
+                <div class="col-span-12 md:col-span-8 lg:col-span-9 h-full relative flex items-center justify-center">
                     
                     <div id="stage-display-memories" class="w-full h-full flex gap-4 overflow-hidden items-center justify-center relative">
                         <div id="stage-cards-container" class="relative w-full h-full flex items-center justify-center">
@@ -684,7 +756,6 @@
 
         // ================== MOBILE SENDER LOGIC ==================
 
-        // 圖片前端自動壓縮（Canvas Downscale）處理函數，確保體積維持在 50KB-100KB 以內，避免超出 Firestore 1MB 的限制
         window.previewUserPhoto = (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -695,11 +766,9 @@
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    // 建立一個 HTML5 Canvas 畫布來繪製壓縮圖片
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // 設定最大寬度，高度按比例自動縮放
                     const maxWidth = 800;
                     let width = img.width;
                     let height = img.height;
@@ -712,10 +781,8 @@
                     canvas.width = width;
                     canvas.height = height;
                     
-                    // 繪製圖片到畫布
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // 將 Canvas 轉換為較小體積的 JPEG Base64 (畫質品質設定為 0.6)
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
                     
                     window.appState.selectedPhotoBase64 = compressedStringSizeCheck(compressedBase64) ? compressedBase64 : null;
@@ -733,10 +800,9 @@
             reader.readAsDataURL(file);
         };
 
-        // 輔助檢測壓縮後字串長度，確保絕對不會超過 Firestore 上限
         function compressedStringSizeCheck(base64Str) {
             const sizeInBytes = base64Str.length * 0.75;
-            return sizeInBytes < 850000; // 嚴格控制在 850KB 以下
+            return sizeInBytes < 850000; 
         }
 
         window.usePresetPhoto = (el, url) => {
@@ -858,7 +924,7 @@
             document.querySelectorAll('#submission-form').forEach(form => {
                 form.reset();
                 form.querySelectorAll('.sticker-btn').forEach(btn => {
-                    btn.classList.remove('bg-orange-600', 'text-slate-950', 'border-orange-500');
+                    btn.classList.remove('bg-orange-600', 'text-slate-955', 'border-orange-500');
                     btn.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
                 });
                 
