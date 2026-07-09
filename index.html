@@ -6,7 +6,7 @@
     <title>浸信會孔憲紹天虹小學「弦誦竹園南」 - 互動時光留言牆與大螢幕互動系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght=300;400;500;700;900&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
         body {
@@ -391,7 +391,7 @@
         </div>
     </template>
 
-    <!-- Template for Stage Screen (Adaptive QR panel and container sizing for tablets & projectors) -->
+    <!-- Template for Stage Screen -->
     <template id="tmpl-stage">
         <div class="w-full h-full relative overflow-hidden flex flex-col justify-between p-6 select-none bg-radial-dots">
             
@@ -421,9 +421,9 @@
 
             <div class="grid grid-cols-12 gap-4 lg:gap-6 flex-grow items-center z-30 my-6 relative h-3/5">
                 
-                <!-- Left panel: Self-adjusting responsive QR width to fit tablet cleanly -->
+                <!-- Left panel: QR Code & Call to action (Title font expanded to match the name/content style) -->
                 <div id="stage-left-panel" class="col-span-12 md:col-span-4 lg:col-span-3 bg-slate-950/80 border border-slate-800 p-4 md:p-6 rounded-2xl flex flex-col justify-center items-center text-center gap-3 md:gap-5 backdrop-blur-md h-full shadow-2xl">
-                    <span class="text-sm md:text-lg font-bold text-orange-400">📲 掃碼發送留言/相片</span>
+                    <span class="text-base md:text-2xl font-black text-orange-400">📲 掃碼發送留言/相片</span>
                     <div id="stage-qrcode-container" class="p-3 bg-white rounded-2xl shadow-xl inline-block w-36 h-36 sm:w-44 sm:h-44 md:w-44 md:h-44 lg:w-52 lg:h-52 xl:w-64 xl:h-64 transition-all duration-300 transform hover:scale-105">
                         <img id="stage-qrcode-img" src="" class="w-full h-full object-contain" alt="QR Code">
                     </div>
@@ -552,28 +552,24 @@
             }, 3000);
         };
 
-        // 核心功能：高畫質動態頭像生成器。當來賓不上傳相片時，動態繪製「全名」（包括中英文與多行自適應排版）
         window.generateFullAvatar = (name) => {
             const canvas = document.createElement('canvas');
             canvas.width = 300;
             canvas.height = 300;
             const ctx = canvas.getContext('2d');
             
-            // 繪製高質感漸變背景
             const grad = ctx.createLinearGradient(0, 0, 300, 300);
             grad.addColorStop(0, '#0D8B41');
             grad.addColorStop(1, '#055c29');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, 300, 300);
             
-            // 繪製微米線條背景裝飾以增強質感
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
             ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.arc(150, 150, 110, 0, Math.PI * 2);
             ctx.stroke();
             
-            // 文字繪製參數
             ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -581,7 +577,6 @@
             let cleanName = name.trim();
             let fontSize = 36;
             
-            // 根據名字長度動態調整字型大小，避免中英文溢出
             if (cleanName.length > 8) {
                 fontSize = 20;
             } else if (cleanName.length > 5) {
@@ -590,7 +585,6 @@
             
             ctx.font = `bold ${fontSize}px "Noto Sans TC", sans-serif`;
             
-            // 超過 4 個字則進行雙行精準折返，確保呈現名字「全名」
             if (cleanName.length > 4) {
                 const mid = Math.ceil(cleanName.length / 2);
                 const line1 = cleanName.substring(0, mid);
@@ -808,7 +802,6 @@
 
         // ================== MOBILE SENDER LOGIC ==================
 
-        // 圖片前端自動壓縮（Canvas Downscale）處理函數，確保體積維持在 100KB-200KB 以內，大螢幕上依舊極致清晰
         window.previewUserPhoto = (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -822,7 +815,6 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // 提升寬度至 1200px 確保高清晰投影
                     const maxWidth = 1200;
                     let width = img.width;
                     let height = img.height;
@@ -837,7 +829,6 @@
                     
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // 將品質提升到 0.85 實現幾乎無損的投影效果
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
                     
                     window.appState.selectedPhotoBase64 = compressedStringSizeCheck(compressedBase64) ? compressedBase64 : null;
@@ -1185,7 +1176,7 @@
             if (stageIntervalId) clearInterval(stageIntervalId);
             stageIntervalId = setInterval(() => {
                 cyclePolaroidCard(container);
-            }, 4000); 
+            }, 8000); // 8 seconds cycle time
 
             updateStagePoemOverlay(container);
         }
@@ -1279,7 +1270,6 @@
             const isEmbedded = container.id === 'stage-embed-target';
 
             const rot = (Math.random() * 10 - 5) + 'deg';
-            // 採用全新 Canvas 動態生成「全名」的高畫質頭像
             const defaultAvatar = window.generateFullAvatar(msg.name);
             const imageSrc = msg.photo || defaultAvatar;
 
@@ -1302,8 +1292,8 @@
                     </div>
                 `;
             } else {
-                // 大螢幕大舞台卡片渲染：顯著放大名字與身份字型，利於來賓遠處閱讀
-                card.className = 'polaroid-card absolute bg-white p-3 md:p-4 pb-10 md:pb-14 rounded shadow-2xl flex flex-col max-w-[280px] md:max-w-[360px] border border-slate-200 z-10';
+                // 大螢幕大舞台卡片渲染：將四周留白完全統一（移除底部 pb-10 多餘空間，使底部與頂部留白完全等寬）
+                card.className = 'polaroid-card absolute bg-white p-3 md:p-4 rounded shadow-2xl flex flex-col max-w-[280px] md:max-w-[360px] border border-slate-200 z-10';
                 card.style.setProperty('--rot', rot);
                 
                 card.innerHTML = `
@@ -1311,7 +1301,7 @@
                         <img src="${imageSrc}" class="w-full h-full object-cover shadow-inner">
                     </div>
                     <div class="px-2">
-                        <p class="text-sm md:text-lg font-bold text-slate-800 mb-2 leading-snug line-clamp-6 font-[Noto Serif TC]">"${msg.message}"</p>
+                        <p class="text-base md:text-2xl font-bold text-slate-800 mb-2 leading-snug line-clamp-7 font-[Noto Serif TC]">"${msg.message}"</p>
                         <div class="flex items-center justify-between mt-3 border-t border-slate-100 pt-2">
                             <span class="text-base md:text-2xl font-black text-orange-600 tracking-wide">${msg.name}</span>
                             <span class="text-xs md:text-base font-semibold bg-slate-100 text-slate-600 px-3 py-1 rounded border border-slate-200">${msg.identity}</span>
@@ -1363,7 +1353,6 @@
             });
         }
 
-        // 彈幕發射：將彈幕內文與名牌文字整體放大 33% (1/3)，提升大禮堂後方的可視度
         function launchDanmaku(msg) {
             let danmakuContainers = [];
             if(window.appState.currentView === 'dashboard') {
@@ -1378,14 +1367,12 @@
                 if(!container) return;
                 
                 const el = document.createElement('div');
-                // 升級字體尺寸：從 text-lg md:text-2xl 提升至 text-2xl md:text-4xl
                 el.className = 'danmaku-item text-2xl md:text-4xl';
                 el.dataset.id = msg.id; 
                 const colors = ['text-orange-300', 'text-teal-300', 'text-amber-200', 'text-rose-300', 'text-blue-300'];
                 const color = colors[Math.floor(Math.random() * colors.length)];
                 
                 el.classList.add(color);
-                // 升級內置來賓名字字體：從 text-sm 升級為 text-base md:text-lg
                 el.innerHTML = `<span class="bg-slate-900/75 px-4 py-2 rounded-full border border-slate-700 backdrop-blur-sm shadow-xl">
                                     <span class="font-extrabold text-base md:text-lg text-slate-300 mr-3 border-r border-slate-700 pr-3">${msg.name}</span>
                                     ${msg.message}
