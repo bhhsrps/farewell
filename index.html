@@ -421,7 +421,7 @@
 
             <div class="grid grid-cols-12 gap-4 lg:gap-6 flex-grow items-center z-30 my-6 relative h-3/5">
                 
-                <!-- Left panel: QR Code & Call to action (Title font expanded to match the name/content style) -->
+                <!-- Left panel: QR Code & Call to action -->
                 <div id="stage-left-panel" class="col-span-12 md:col-span-4 lg:col-span-3 bg-slate-950/80 border border-slate-800 p-4 md:p-6 rounded-2xl flex flex-col justify-center items-center text-center gap-3 md:gap-5 backdrop-blur-md h-full shadow-2xl">
                     <span class="text-base md:text-2xl font-black text-orange-400">📲 掃碼發送留言/相片</span>
                     <div id="stage-qrcode-container" class="p-3 bg-white rounded-2xl shadow-xl inline-block w-36 h-36 sm:w-44 sm:h-44 md:w-44 md:h-44 lg:w-52 lg:h-52 xl:w-64 xl:h-64 transition-all duration-300 transform hover:scale-105">
@@ -535,7 +535,8 @@
             polaroidIndex: 0,
             currentPolaroidId: null, 
             targetQRUrl: window.location.origin + window.location.pathname + '#mobile',
-            seenDanmakuIds: new Set()
+            seenDanmakuIds: new Set(),
+            danmakuLanes: new Array(8).fill(0) // 💡 用於儲存 8 條水平彈幕軌道各自的解鎖冷卻時間戳
         };
 
         window.showToast = (message, type = 'info') => {
@@ -1353,6 +1354,7 @@
             });
         }
 
+        // 💡 智慧防撞/防重疊彈幕發射器
         function launchDanmaku(msg) {
             let danmakuContainers = [];
             if(window.appState.currentView === 'dashboard') {
@@ -1366,6 +1368,45 @@
             danmakuContainers.forEach(container => {
                 if(!container) return;
                 
+                // 初始化軌道冷卻時間戳陣列 (共 8 條水平軌道)
+                if (!window.appState.danmakuLanes) {
+                    window.appState.danmakuLanes = new Array(8).fill(0);
+                }
+                
+                const now = Date.now();
+                const numLanes = 8;
+                let selectedLane = 0;
+                
+                // 1. 篩選出目前完全沒有彈幕在起點冷卻期內的「空閒軌道」
+                const freeLanes = [];
+                for (let i = 0; i < numLanes; i++) {
+                    if (now > window.appState.danmakuLanes[i]) {
+                        freeLanes.push(i);
+                    }
+                }
+                
+                if (freeLanes.length > 0) {
+                    // 2. 有空閒軌道，隨機挑選一條
+                    selectedLane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
+                } else {
+                    // 3. 全滿時，智慧挑選「最快會解鎖」的那一條軌道，避免疊加碰撞
+                    let minTime = Infinity;
+                    for (let i = 0; i < numLanes; i++) {
+                        if (window.appState.danmakuLanes[i] < minTime) {
+                            minTime = window.appState.danmakuLanes[i];
+                            selectedLane = i;
+                        }
+                    }
+                }
+                
+                // 4. 計算新彈幕的長度，動態給予軌道專屬的「起點清空冷卻期」（字數越多，完全飄入畫面所需時間越長）
+                const baseCooldown = 3500; // 最低間隔 3.5 秒
+                const charFactor = Math.min(5500, msg.message.length * 120); // 隨字數累加的避讓時間
+                window.appState.danmakuLanes[selectedLane] = now + baseCooldown + charFactor;
+                
+                // 5. 將軌道編號精準換算為 Y 軸百分比 (避開頂部 5% 與底部 15%，中間均勻鋪開)
+                const laneHeightPct = 5 + (selectedLane * 11);
+                
                 const el = document.createElement('div');
                 el.className = 'danmaku-item text-2xl md:text-4xl';
                 el.dataset.id = msg.id; 
@@ -1378,8 +1419,7 @@
                                     ${msg.message}
                                 </span>`;
                 
-                const topPct = Math.random() * 80;
-                el.style.top = `${topPct}%`;
+                el.style.top = `${laneHeightPct}%`;
                 
                 const duration = Math.max(8, msg.message.length * 0.4) + (Math.random() * 3);
                 el.style.animationDuration = `${duration}s`;
