@@ -345,12 +345,18 @@
                     </div>
             </div>
 
+            <!-- Approved Tab: Added a highly visible, premium green Export Button on the right -->
             <div id="panel-tab-approved" class="hidden space-y-3">
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-400 font-semibold">已在大螢幕上顯示</span>
-                    <button onclick="window.triggerClearAllConfirm()" class="text-red-400 hover:underline font-semibold">
-                        <i class="fa-solid fa-trash-can"></i> 清空全部數據
-                    </button>
+                    <div class="flex gap-3">
+                        <button onclick="window.exportToCSV()" class="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 transition">
+                            <i class="fa-solid fa-file-excel"></i> 一鍵匯出資料
+                        </button>
+                        <button onclick="window.triggerClearAllConfirm()" class="text-red-400 hover:text-red-300 font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> 清空全部數據
+                        </button>
+                    </div>
                 </div>
                 <div id="approved-list" class="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                     </div>
@@ -391,7 +397,7 @@
         </div>
     </template>
 
-    <!-- Template for Stage Screen (Optimized with Dynamic Double-line Large Font News Ticker) -->
+    <!-- Template for Stage Screen -->
     <template id="tmpl-stage">
         <div class="w-full h-full relative overflow-hidden flex flex-col justify-between p-6 select-none bg-radial-dots">
             
@@ -463,13 +469,12 @@
                 </div>
             </div>
 
-            <!-- Ticker Container: Modified with items-start/items-center and fluid text scaling to prevent truncation -->
+            <!-- Ticker Container -->
             <div class="bg-slate-950/90 border border-slate-800 px-6 py-4 rounded-xl flex items-center gap-4 backdrop-blur-md z-30 shadow-xl min-h-[5.5rem]">
                 <span class="text-xs md:text-base bg-orange-600 text-slate-950 font-black px-3 py-2 rounded shrink-0 flex items-center gap-2 h-fit">
                     <i class="fa-solid fa-bolt"></i> 活動最新動態
                 </span>
                 <div class="flex-grow">
-                    <!-- Text sizing is set to text-base md:text-2xl (exactly matching the main display's font sizes) and uses line-clamp-2 for up to two rows of wrapped text -->
                     <div id="stage-ticker-text" class="text-base md:text-2xl text-slate-200 font-medium transition-all duration-500 line-clamp-2 leading-relaxed">
                         「弦誦竹園南」竹園校舍惜別活動已隆重揭開序幕！歡迎各位舊同工、校友、家長拍照打卡，留言支持。
                     </div>
@@ -538,7 +543,7 @@
             currentPolaroidId: null, 
             targetQRUrl: window.location.origin + window.location.pathname + '#mobile',
             seenDanmakuIds: new Set(),
-            danmakuLanes: new Array(8).fill(0) // 💡 用於儲存 8 條水平彈幕軌道各自的解鎖冷卻時間戳
+            danmakuLanes: new Array(8).fill(0) 
         };
 
         window.showToast = (message, type = 'info') => {
@@ -599,6 +604,50 @@
             }
             
             return canvas.toDataURL('image/png');
+        };
+
+        // 💡 一鍵匯出 CSV 功能（含 UTF-8 BOM 防 Excel 亂碼）
+        window.exportToCSV = () => {
+            const msgs = window.appState.messages;
+            if (!msgs || msgs.length === 0) {
+                window.showToast("目前沒有留言數據可供匯出！", "error");
+                return;
+            }
+
+            // UTF-8 BOM 檔頭，防止 Excel 讀取繁體中文時產生亂碼
+            let csvContent = "\ufeff"; 
+            
+            // 標題列
+            csvContent += "發送時間,來賓姓名,身份標籤,祝福留言內容,審核狀態,是否有照片\n";
+
+            // 寫入各欄位資料（加入雙引號防止逗號破壞 CSV 結構）
+            msgs.forEach(m => {
+                const timeStr = new Date(m.timestamp).toLocaleString('zh-HK');
+                const name = `"${(m.name || '').replace(/"/g, '""')}"`;
+                const identity = `"${(m.identity || '').replace(/"/g, '""')}"`;
+                const message = `"${(m.message || '').replace(/"/g, '""')}"`;
+                const status = m.approved ? "已發布" : "待審核";
+                const hasPhoto = m.photo ? "是" : "否";
+
+                csvContent += `${timeStr},${name},${identity},${message},${status},${hasPhoto}\n`;
+            });
+
+            // 建立下載點
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            
+            // 下載命名格式：弦誦竹園南_留言數據_2026-07-11.csv
+            const dateStr = new Date().toISOString().slice(0, 10);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `弦誦竹園南_留言數據_${dateStr}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            window.showToast("📊 留言數據已成功匯出為 Excel CSV 檔！", "success");
         };
 
         function initApp() {
@@ -973,7 +1022,7 @@
             document.querySelectorAll('#submission-form').forEach(form => {
                 form.reset();
                 form.querySelectorAll('.sticker-btn').forEach(btn => {
-                    btn.classList.remove('bg-orange-600', 'text-slate-950', 'border-orange-500');
+                    btn.classList.remove('bg-orange-600', 'text-slate-955', 'border-orange-500');
                     btn.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
                 });
                 
@@ -991,8 +1040,8 @@
         window.switchControlTab = (tabId) => {
             window.appState.activeControlTab = tabId;
             ['pending', 'approved', 'gemini'].forEach(t => {
-                const btn = document.getElementById(`tab-btn-${t}`);
-                const panel = document.getElementById(`panel-tab-${t}`);
+                const btn = document.getElementById('tab-btn-' + t);
+                const panel = document.getElementById('panel-tab-' + t);
                 if (btn && panel) {
                     if (t === tabId) {
                         btn.classList.add('border-b-2', 'border-teal-400', 'text-teal-400');
